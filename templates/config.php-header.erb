@@ -1,0 +1,37 @@
+<?php
+/**
+ * phpVirtualBox example configuration. 
+ * @version $Id: config.php-example 452 2012-10-17 12:22:12Z imooreyahoo@gmail.com $
+ *
+ * rename to config.php and edit as needed.
+ *
+ */
+class phpVBoxConfig {
+
+/* Username / Password for system user that runs VirtualBox */
+var $username = 'vbox';
+var $password = 'pass';
+
+/* SOAP URL of vboxwebsrv (not phpVirtualBox's URL) */
+var $location = 'http://127.0.0.1:18083/';
+
+/* Default language. See languages folder for more language options.
+ * Can also be changed in File -> Preferences -> Language in
+ * phpVirtualBox.
+ */
+var $language = 'en';
+
+/* Set the standard VRDE Port Number / Range, e.g. 1010-1020 or 1027 */
+var $vrdeports = '9000-9100';
+
+/*
+ *
+ * Not-so-common options / tweaking
+ *
+ */
+
+// Multiple servers example config. Uncomment (remove /* and */) to use.
+// Add ALL the servers you want to use. Even if you have the server set
+// above. The default server will be the first one in the list.
+
+var $servers = array(
