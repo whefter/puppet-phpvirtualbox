@@ -14,6 +14,11 @@ define phpvirtualbox::instance
     $httpd                  = $::phpvirtualbox::httpd,
     $httpd_port             = $::phpvirtualbox::httpd_port,
     $httpd_ssl              = $::phpvirtualbox::httpd_ssl,
+    $httpd_ssl_port         = $::phpvirtualbox::httpd_ssl_port,
+    $httpd_ssl_ca           = $::phpvirtualbox::httpd_ssl_ca,
+    $httpd_ssl_chain        = $::phpvirtualbox::httpd_ssl_chain,
+    $httpd_ssl_crt          = $::phpvirtualbox::httpd_ssl_crt,
+    $httpd_ssl_key          = $::phpvirtualbox::httpd_ssl_key,
     $httpd_ssl_protocol     = $::phpvirtualbox::httpd_ssl_protocol,
     $httpd_ssl_cipher       = $::phpvirtualbox::httpd_ssl_cipher,
     $www_owner              = $::phpvirtualbox::www_owner,
@@ -126,26 +131,52 @@ define phpvirtualbox::instance
                   ]:
             ensure => installed,
         }
-
-        $_httpd_port = $httpd_port ? {
-            undef => $httpd_ssl ? {
-                true    => 443,
-                default => 80,
-            },
-            default => $httpd_port,
-        }
         
-        ::apache::vhost { "phpvirtualbox-${name}":
-            port            => $_httpd_port,
-            ssl             => $httpd_ssl,
-            docroot         => $www_symlink_path,
-            manage_docroot  => false,
-            ssl_protocol    => $httpd_ssl_protocol,
-            ssl_cipher      => $httpd_ssl_cipher,
+        if $httpd_ssl {
+            include ::apache::mod::rewrite, ::apache::mod::ssl
             
-            require         => [
-                File[$www_symlink_path],
-            ],
+            apache::vhost { 'phpvirtualbox-${name}-http':
+                port            => $httpd_port,
+                docroot         => $www_symlink_path,
+                manage_docroot  => false,
+                rewrites        => [
+                    {
+                        comment      => 'Redirect non-SSL traffic to SSL site',
+                        rewrite_cond => ['%{HTTPS} off'],
+                        rewrite_rule => ['(.*) https://%{HTTP_HOST}:${httpd_ssl_port}%{REQUEST_URI}'],
+                    }
+                ],
+                
+                require         => [
+                    File[$www_symlink_path],
+                ],
+            }
+        
+            ::apache::vhost { "phpvirtualbox-${name}-https":
+                ssl             => true,
+                port            => $httpd_ssl_port,
+                ssl_protocol    => $httpd_ssl_protocol,
+                ssl_cipher      => $httpd_ssl_cipher,
+                ssl_ca          => $httpd_ssl_ca,
+                ssl_chain       => $httpd_ssl_chain,
+                ssl_cert        => $httpd_ssl_crt,
+                ssl_key         => $httpd_ssl_key,
+                docroot         => $www_symlink_path,
+                manage_docroot  => false,
+                
+                require         => [
+                    File[$www_symlink_path],
+                ],
+            }
+        } else {
+            apache::vhost { 'phpvirtualbox-${name}-http':
+                port            => $httpd_port,
+                docroot         => $www_symlink_path,
+                manage_docroot  => false,
+                
+                require         => [
+                    File[$www_symlink_path],
+                ],
         }
     }
     
