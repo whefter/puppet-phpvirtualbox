@@ -1,0 +1,46 @@
+{
+  "name": "whefter-phpvirtualbox",
+  "version": "0.0.1",
+  "author": "William Hefter",
+  "dependencies": [
+    {"name":"puppetlabs/stdlib","version_requirement":">= 4.5.0 < 5.0.0"},
+    {"name":"puppetlabs/apache","version_requirement":">= 1.4.0 < 2.0.0"}
+  ],
+  "license": "GPL-3.0",
+  "operatingsystem_support": [
+    {
+      "operatingsystem": "Debian",
+      "operatingsystemrelease": [
+        "6",
+        "7",
+        "8"
+      ]
+    },
+    {
+      "operatingsystem": "Ubuntu",
+      "operatingsystemrelease": [
+        "10.04",
+        "12.04",
+        "14.04"
+      ]
+    }
+  ],
+  "project_page": "https://github.com/whefter/puppet-phpvirtualbox",
+  "issues_url": "https://github.com/whefter/puppet-phpvirtualbox/issues",
+  "requirements": [
+    {
+      "name": "pe",
+      "version_requirement": "3.x"
+    },
+    {
+      "name": "puppet",
+      "version_requirement": "3.x"
+    }
+  ],
+  "source": "https://github.com/whefter/puppet-phpvirtualbox.git",
+  "summary": "phpVirtualBox module for Puppet.",
+  "tags": [
+  	"virtualbox",
+  	"phpvirtualbox"
+   ]
+}
