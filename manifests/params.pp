@@ -2,10 +2,13 @@ class phpvirtualbox::params
 {
   $version            = '4.3-2'
   $base_path          = '/srv/phpvirtualbox'
+  $download_proxy     = undef
   $httpd              = false
   $httpd_port         = 80
   $httpd_ssl          = true
   $httpd_ssl_port     = 443
+  # /etc/ssl/certs/ssl-cert-snakeoil.pem
+  # /etc/ssl/private/ssl-cert-snakeoil.key
   $httpd_ssl_ca       = "${::settings::ssldir}/certs/ca.pem"
   $httpd_ssl_chain    = "${::settings::ssldir}/certs/ca.pem"
   $httpd_ssl_crt      = "${::settings::ssldir}/certs/${::fqdn}.pem"

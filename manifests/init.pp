@@ -2,6 +2,7 @@ class phpvirtualbox
 (
   $version            = $phpvirtualbox::params::version,
   $base_path          = $phpvirtualbox::params::base_path,
+  $download_proxy     = $phpvirtualbox::params::download_proxy,
   $httpd              = $phpvirtualbox::params::httpd,
   $httpd_port         = $phpvirtualbox::params::httpd_port,
   $httpd_ssl_protocol = $phpvirtualbox::params::httpd_ssl_protocol,
