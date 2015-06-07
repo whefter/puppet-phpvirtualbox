@@ -1,22 +1,23 @@
 define phpvirtualbox::instance
 (
-  $version            = $::phpvirtualbox::version,
-  $base_path          = "${::phpvirtualbox::base_path}/${name}",
-  $download_proxy     = $::phpvirtualbox::download_proxy,
-  $hosts              = {},
-  $httpd              = $::phpvirtualbox::httpd,
-  $httpd_port         = $::phpvirtualbox::httpd_port,
-  $httpd_ssl          = $::phpvirtualbox::httpd_ssl,
-  $httpd_ssl_port     = $::phpvirtualbox::httpd_ssl_port,
-  $httpd_ssl_ca       = $::phpvirtualbox::httpd_ssl_ca,
-  $httpd_ssl_chain    = $::phpvirtualbox::httpd_ssl_chain,
-  $httpd_ssl_crt      = $::phpvirtualbox::httpd_ssl_crt,
-  $httpd_ssl_key      = $::phpvirtualbox::httpd_ssl_key,
-  $httpd_ssl_protocol = $::phpvirtualbox::httpd_ssl_protocol,
-  $httpd_ssl_cipher   = $::phpvirtualbox::httpd_ssl_cipher,
-  $www_owner          = $::phpvirtualbox::www_owner,
-  $www_group          = $::phpvirtualbox::www_group,
-  $storeconfigs_tag   = undef
+  $version             = $::phpvirtualbox::version,
+  $base_path           = "${::phpvirtualbox::base_path}/${name}",
+  $download_proxy      = $::phpvirtualbox::download_proxy,
+  $hosts               = {},
+  $httpd               = $::phpvirtualbox::httpd,
+  $httpd_port          = $::phpvirtualbox::httpd_port,
+  $httpd_ssl           = $::phpvirtualbox::httpd_ssl,
+  $httpd_ssl_port      = $::phpvirtualbox::httpd_ssl_port,
+  $httpd_purge_configs = $::phpvirtualbox::httpd_purge_configs,
+  $httpd_ssl_ca        = $::phpvirtualbox::httpd_ssl_ca,
+  $httpd_ssl_chain     = $::phpvirtualbox::httpd_ssl_chain,
+  $httpd_ssl_crt       = $::phpvirtualbox::httpd_ssl_crt,
+  $httpd_ssl_key       = $::phpvirtualbox::httpd_ssl_key,
+  $httpd_ssl_protocol  = $::phpvirtualbox::httpd_ssl_protocol,
+  $httpd_ssl_cipher    = $::phpvirtualbox::httpd_ssl_cipher,
+  $www_owner           = $::phpvirtualbox::www_owner,
+  $www_group           = $::phpvirtualbox::www_group,
+  $storeconfigs_tag    = undef
 )
 {
   include ::phpvirtualbox
@@ -42,7 +43,9 @@ define phpvirtualbox::instance
     # Install and configure Apache
     if !defined(Class['::apache']) {
       class { '::apache':
-        mpm_module => 'prefork',
+        mpm_module    => 'prefork',
+        default_vhost => false,
+        purge_configs => $httpd_purge_configs,
       }
     }
 
