@@ -29,8 +29,9 @@ define phpvirtualbox::instance
   $config_file            = "${base_path}/config.php"
   $download_file          = "${download_path}/${download_file_basename}.zip"
   $version_path           = "${files_path}/${version}"
+  $www_path               = "${version_path}/${download_file_basename}"
 
-  $find_www_cmdline = "$(find \"${version_path}\" -name index.html -print0 | xargs -0 -n1 dirname | head -1)"
+#  $find_www_cmdline = "$(find \"${version_path}\" -name index.html -print0 | xargs -0 -n1 dirname | head -1)"
 
   $config_servers_block_fragment_file = "/tmp/concat_fragment_phpvirtualbox_config_${name}_servers"
 
@@ -123,9 +124,21 @@ define phpvirtualbox::instance
     ],
   }
 
-  exec { "phpvirtualbox_${name}_chmod_www":
+  exec { "phpvirtualbox_${name}_chmod_www_folders":
     path        => $::path,
-    command     => "chmod 750 ${find_www_cmdline}",
+    command     => "find ${www_path} -type d -exec chmod 750 {} +",
+#    onlyif      => "find ${find_www_cmdline} -type d \\! -perm 750",
+    refreshonly => true,
+    subscribe   => [
+      Archive[$download_file_basename],
+    ],
+  }
+
+
+  exec { "phpvirtualbox_${name}_chmod_www_files":
+    path        => $::path,
+    command     => "find ${www_path} -type f -exec chmod 640 {} +",
+#    onlyif      => "find ${find_www_cmdline} -type f \\! -perm 640",
     refreshonly => true,
     subscribe   => [
       Archive[$download_file_basename],
@@ -134,18 +147,29 @@ define phpvirtualbox::instance
 
   exec { "phpvirtualbox_${name}_chown_www":
     path        => $::path,
-    command     => "chown ${_www_owner}:${_www_group} -R ${find_www_cmdline}",
+    command     => "chown ${_www_owner}:${_www_group} -R ${www_path}",
+#    onlyif      => "find ${find_www_cmdline} \\! -user ${_www_owner} -o \\! -group ${_www_group}",
     refreshonly => true,
     subscribe   => [
       Archive[$download_file_basename],
     ],
   }
 
-  exec { "phpvirtualbox_${name}_create_www_symlink":
-    path        => $::path,
-    command     => "ln -T -f -s ${find_www_cmdline} \"${www_symlink_path}\"",
-    unless      => "readlink \"${www_symlink_path}\" | grep ${find_www_cmdline}",
-    subscribe   => [
+#  exec { "phpvirtualbox_${name}_create_www_symlink":
+#    path        => $::path,
+#    command     => "ln -T -f -s ${find_www_cmdline} \"${www_symlink_path}\"",
+#    unless      => "readlink \"${www_symlink_path}\" | grep ${find_www_cmdline}",
+#    subscribe   => [
+#      Archive[$download_file_basename],
+#    ],
+#  }
+
+  file { $www_symlink_path:
+    ensure  => link,
+    target  => $www_path,
+    owner   => $_www_owner,
+    group   => $_www_group,
+    require => [
       Archive[$download_file_basename],
     ],
   }
@@ -163,13 +187,23 @@ define phpvirtualbox::instance
     ]
   }
 
-  exec { "phpvirtualbox_${name}_create_config_symlink":
-    path      => $::path,
-    command   => "ln -f -s \"${$config_file}\" ${find_www_cmdline}/config.php",
-    unless    => "readlink ${find_www_cmdline}/config.php | grep \"${config_file}\"",
-    subscribe => [
-    ],
-    require   => [
+#  exec { "phpvirtualbox_${name}_create_config_symlink":
+#    path      => $::path,
+#    command   => "ln -f -s \"${$config_file}\" ${find_www_cmdline}/config.php",
+#    unless    => "readlink ${find_www_cmdline}/config.php | grep \"${config_file}\"",
+#    subscribe => [
+#    ],
+#    require   => [
+#      Concat[$config_file],
+#      Archive[$download_file_basename],
+#    ],
+#  }
+  file { "${www_path}/config.php":
+    ensure  => link,
+    target  => $config_file,
+    owner   => $_www_owner,
+    group   => $_www_group,
+    require => [
       Concat[$config_file],
       Archive[$download_file_basename],
     ],
@@ -237,7 +271,8 @@ define phpvirtualbox::instance
           }
         ],
         require        => [
-          Exec["phpvirtualbox_${name}_create_www_symlink"],
+#          Exec["phpvirtualbox_${name}_create_www_symlink"],
+          File[$www_symlink_path],
         ],
       }
 
@@ -253,7 +288,8 @@ define phpvirtualbox::instance
         docroot        => $www_symlink_path,
         manage_docroot => false,
         require        => [
-          Exec["phpvirtualbox_${name}_create_www_symlink"],
+#          Exec["phpvirtualbox_${name}_create_www_symlink"],
+          File[$www_symlink_path],
         ],
       }
     } else {
@@ -262,7 +298,8 @@ define phpvirtualbox::instance
         docroot        => $www_symlink_path,
         manage_docroot => false,
         require        => [
-          Exec["phpvirtualbox_${name}_create_www_symlink"],
+#          Exec["phpvirtualbox_${name}_create_www_symlink"],
+          File[$www_symlink_path],
         ],
       }
     }
