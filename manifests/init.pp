@@ -13,11 +13,10 @@ class phpvirtualbox
 )
 inherits phpvirtualbox::params
 {
-
   if !defined(Package['unzip']) {
     package { 'unzip':
     }
   }
-  
+
   create_resources(phpvirtualbox::instance, $instances)
 }

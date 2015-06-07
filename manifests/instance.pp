@@ -30,6 +30,34 @@ define phpvirtualbox::instance
   $download_file          = "${download_path}/${download_file_basename}.zip"
   $version_path           = "${files_path}/${version}"
 
+  $find_www_cmdline = "$(find \"${version_path}\" -name index.html -print0 | xargs -0 -n1 dirname | head -1)"
+
+  $config_servers_block_fragment_file = "/tmp/concat_fragment_phpvirtualbox_config_${name}_servers"
+
+  # End settings
+  ##
+
+  if $httpd {
+    # Install and configure Apache
+    if !defined(Class['::apache']) {
+      class { '::apache':
+        mpm_module => 'prefork',
+      }
+    }
+
+    # If Apache is to be managed, set default user correctly if undefined
+    if !$www_owner {
+      $_www_owner = $::apache::params::user
+    } else {
+      $_www_owner = $www_owner
+    }
+    if !$www_group {
+      $_www_group = $::apache::params::group
+    } else {
+      $_www_group = $www_group
+    }
+  }
+
   exec { "phpvirtualbox_${name}_create_base_path":
     path    => $::path,
     command => "mkdir -p ${base_path}",
@@ -38,8 +66,8 @@ define phpvirtualbox::instance
 
   file { $base_path:
     ensure  => directory,
-    owner   => $www_owner,
-    group   => $www_group,
+    owner   => $_www_owner,
+    group   => $_www_group,
     mode    => '0755',
     require => [
       Exec["phpvirtualbox_${name}_create_base_path"],
@@ -48,6 +76,9 @@ define phpvirtualbox::instance
 
   file { $download_path:
     ensure  => directory,
+    owner   => $_www_owner,
+    group   => $_www_group,
+    mode    => '0755',
     require => [
       Exec["phpvirtualbox_${name}_create_base_path"],
     ],
@@ -55,6 +86,9 @@ define phpvirtualbox::instance
 
   file { $files_path:
     ensure  => directory,
+    owner   => $_www_owner,
+    group   => $_www_group,
+    mode    => '0755',
     require => [
       Exec["phpvirtualbox_${name}_create_base_path"],
     ],
@@ -62,35 +96,15 @@ define phpvirtualbox::instance
 
   file { $version_path:
     ensure  => directory,
+    owner   => $_www_owner,
+    group   => $_www_group,
+    mode    => '0755',
     require => [
       File[$files_path],
     ],
   }
 
-  # Unzip cannot strip components like tar can. The unzip command
-  # might (currently does) create a subdirectory in $version_path
-  # because phpvirtualbox release ZIP archives contain this folder.
-  # Do a bit of shell magic to deal with this.
-#  exec { "phpvirtualbox_${name}_download_${version}":
-#    path    => $::path,
-#    command => "wget ${download_url} -O ${download_file}",
-#    creates => "${download_file}",
-#    require => [
-#      File[$download_path],
-#    ],
-#  }
-#  ~>
-#  exec { "phpvirtualbox_${name}_unzip_${version}":
-#    path        => $::path,
-#    command     => "unzip -o ${download_file} -d ${version_path}",
-#    refreshonly => true,
-#    require     => [
-#      Package['unzip'],
-#      File[$version_path],
-#    ],
-#  }
-  
-    # Checksum is currently not checked because owncloud's checksum files 
+  # Checksum is currently not checked because owncloud's checksum files
   # do not contain the name of the checked file...
   archive { $download_file_basename:
     ensure           => present,
@@ -109,24 +123,20 @@ define phpvirtualbox::instance
     ],
   }
 
-  $find_www_cmdline = "$(find \"${version_path}\" -name index.html -print0 | xargs -0 -n1 dirname | head -1)"
-
   exec { "phpvirtualbox_${name}_chmod_www":
     path        => $::path,
     command     => "chmod 750 ${find_www_cmdline}",
     refreshonly => true,
     subscribe   => [
-#      Exec["phpvirtualbox_${name}_unzip_${version}"],
       Archive[$download_file_basename],
     ],
   }
 
   exec { "phpvirtualbox_${name}_chown_www":
     path        => $::path,
-    command     => "chown ${::www_owner}:${::www_group} -R ${find_www_cmdline}",
+    command     => "chown ${::_www_owner}:${::_www_group} -R ${find_www_cmdline}",
     refreshonly => true,
     subscribe   => [
-#      Exec["phpvirtualbox_${name}_unzip_${version}"],
       Archive[$download_file_basename],
     ],
   }
@@ -136,23 +146,20 @@ define phpvirtualbox::instance
     command     => "ln -T -f -s ${find_www_cmdline} \"${www_symlink_path}\"",
     unless      => "readlink \"${www_symlink_path}\" | grep ${find_www_cmdline}",
     subscribe   => [
-#      Exec["phpvirtualbox_${name}_unzip_${version}"],
       Archive[$download_file_basename],
     ],
   }
 
   # Configuration file definition, concat definition
-  concat_build { "phpvirtualbox_config_${name}":
-  }
-  ->
-  file { $config_file:
-    ensure  => file,
-    owner   => $www_owner,
-    group   => $www_group,
-    mode    => '0400',
-    source  => concat_output("phpvirtualbox_config_${name}"),
-    require => [
+  concat { $config_file:
+    ensure         => present,
+    owner          => $_www_owner,
+    group          => $_www_group,
+    mode           => '0400',
+    ensure_newline => true,
+    require        => [
       File[$base_path],
+      Concat[$config_servers_block_fragment_file],
     ]
   }
 
@@ -160,29 +167,34 @@ define phpvirtualbox::instance
     path      => $::path,
     command   => "ln -f -s \"${$config_file}\" ${find_www_cmdline}/config.php",
     unless    => "readlink ${find_www_cmdline}/config.php | grep \"${config_file}\"",
-#    subscribe => [
-#      Exec["phpvirtualbox_${name}_unzip_${version}"],
-#    ],
+    subscribe => [
+    ],
     require   => [
-      File[$config_file],
+      Concat[$config_file],
       Archive[$download_file_basename],
     ],
   }
 
   # Header
-  concat_fragment { "phpvirtualbox_config_${name}+01":
+  concat::fragment { "phpvirtualbox_config_${name}_header":
+    order   => 1,
+    target  => $config_file,
     content => template('phpvirtualbox/config.php-header.erb'),
   }
 
   # Servers block
-  concat_build { "phpvirtualbox_config_${name}_servers":
-    parent_build   => "phpvirtualbox_config_${name}",
-    target         => "${::puppet_vardir}/concat_native/fragments/phpvirtualbox_config_${name}/10",
-    file_delimiter => ',',
-    append_newline => true,
+  concat { $config_servers_block_fragment_file:
+    mode           => '0400',
+    ensure_newline => true,
   }
 
-  create_resources(phpvirtualbox::hosts, $hosts, { instance_name => $name })
+  concat::fragment { "phpvirtualbox_config_${name}_servers":
+    order   => 10,
+    target  => $config_file,
+    source  => $config_servers_block_fragment_file,
+  }
+
+  create_resources(phpvirtualbox::host, $hosts, { instance_name => $name })
 
   # Collect server exported resources
   if $storeconfigs_tag {
@@ -190,23 +202,19 @@ define phpvirtualbox::instance
   }
 
   # Token content to prevent "no entries for this group" bug
-  concat_fragment { "phpvirtualbox_config_${name}_servers+ZZZZ":
-    content => '//',
-  }
+#  concat::fragment { "phpvirtualbox_config_${name}_servers+ZZZZ":
+#    content => '//',
+#  }
 
   # Footer
-  concat_fragment { "phpvirtualbox_config_${name}+99":
+  concat::fragment { "phpvirtualbox_config_${name}_footer":
+    order   => 99,
+    target  => $config_file,
     content => template('phpvirtualbox/config.php-footer.erb'),
   }
 
+  # Continue from above (Class apache already included)
   if $httpd {
-    # Install and configure Apache
-    if !defined(Class['::apache']) {
-      class { '::apache':
-        mpm_module => 'prefork',
-      }
-    }
-
     include ::apache::mod::php
 
     package { ['php5', 'php-soap']:
@@ -258,5 +266,5 @@ define phpvirtualbox::instance
         ],
       }
     }
-  } 
+  }
 }
