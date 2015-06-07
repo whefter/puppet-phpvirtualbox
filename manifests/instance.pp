@@ -134,7 +134,7 @@ define phpvirtualbox::instance
 
   exec { "phpvirtualbox_${name}_chown_www":
     path        => $::path,
-    command     => "chown ${::_www_owner}:${::_www_group} -R ${find_www_cmdline}",
+    command     => "chown ${_www_owner}:${_www_group} -R ${find_www_cmdline}",
     refreshonly => true,
     subscribe   => [
       Archive[$download_file_basename],
