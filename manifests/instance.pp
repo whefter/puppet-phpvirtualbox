@@ -32,10 +32,6 @@ define phpvirtualbox::instance
   $version_path           = "${files_path}/${version}"
   $www_path               = "${version_path}/${download_file_basename}"
 
-#  $find_www_cmdline = "$(find \"${version_path}\" -name index.html -print0 | xargs -0 -n1 dirname | head -1)"
-
-  $config_servers_block_fragment_file = "/tmp/concat_fragment_phpvirtualbox_config_${name}_servers"
-
   # End settings
   ##
 
@@ -108,8 +104,8 @@ define phpvirtualbox::instance
     ],
   }
 
-  # Checksum is currently not checked because owncloud's checksum files
-  # do not contain the name of the checked file...
+  # Checksum is currently not checked because phpVirtualBox does not provide this data
+  # on their servers
   archive { $download_file_basename:
     ensure           => present,
     url              => $download_url,
@@ -137,7 +133,6 @@ define phpvirtualbox::instance
     ],
   }
 
-
   exec { "phpvirtualbox_${name}_chmod_www_files":
     path        => $::path,
     command     => "find ${www_path} -type f -exec chmod 640 {} +",
@@ -158,15 +153,6 @@ define phpvirtualbox::instance
     ],
   }
 
-#  exec { "phpvirtualbox_${name}_create_www_symlink":
-#    path        => $::path,
-#    command     => "ln -T -f -s ${find_www_cmdline} \"${www_symlink_path}\"",
-#    unless      => "readlink \"${www_symlink_path}\" | grep ${find_www_cmdline}",
-#    subscribe   => [
-#      Archive[$download_file_basename],
-#    ],
-#  }
-
   file { $www_symlink_path:
     ensure  => link,
     target  => $www_path,
@@ -178,29 +164,20 @@ define phpvirtualbox::instance
   }
 
   # Configuration file definition, concat definition
-  concat { $config_file:
-    ensure         => present,
-    owner          => $_www_owner,
-    group          => $_www_group,
-    mode           => '0400',
-    ensure_newline => true,
-    require        => [
+  concat_build { "phpvirtualbox_config_${name}":
+  }
+  ->
+  file { $config_file:
+    ensure  => file,
+    owner   => $_www_owner,
+    group   => $_www_group,
+    mode    => '0400',
+    source  => concat_output("phpvirtualbox_config_${name}"),
+    require => [
       File[$base_path],
-      Concat[$config_servers_block_fragment_file],
     ]
   }
 
-#  exec { "phpvirtualbox_${name}_create_config_symlink":
-#    path      => $::path,
-#    command   => "ln -f -s \"${$config_file}\" ${find_www_cmdline}/config.php",
-#    unless    => "readlink ${find_www_cmdline}/config.php | grep \"${config_file}\"",
-#    subscribe => [
-#    ],
-#    require   => [
-#      Concat[$config_file],
-#      Archive[$download_file_basename],
-#    ],
-#  }
   file { "${www_path}/config.php":
     ensure  => link,
     target  => $config_file,
@@ -213,22 +190,16 @@ define phpvirtualbox::instance
   }
 
   # Header
-  concat::fragment { "phpvirtualbox_config_${name}_header":
-    order   => 1,
-    target  => $config_file,
+  concat_fragment { "phpvirtualbox_config_${name}+01":
     content => template('phpvirtualbox/config.php-header.erb'),
   }
 
   # Servers block
-  concat { $config_servers_block_fragment_file:
-    mode           => '0400',
-    ensure_newline => true,
-  }
-
-  concat::fragment { "phpvirtualbox_config_${name}_servers":
-    order   => 10,
-    target  => $config_file,
-    source  => $config_servers_block_fragment_file,
+  concat_build { "phpvirtualbox_config_${name}_servers":
+    parent_build   => "phpvirtualbox_config_${name}",
+    target         => "${::puppet_vardir}/concat_native/fragments/phpvirtualbox_config_${name}/10",
+    file_delimiter => ',',
+    append_newline => true,
   }
 
   create_resources(phpvirtualbox::host, $hosts, { instance_name => $name })
@@ -239,14 +210,12 @@ define phpvirtualbox::instance
   }
 
   # Token content to prevent "no entries for this group" bug
-#  concat::fragment { "phpvirtualbox_config_${name}_servers+ZZZZ":
-#    content => '//',
-#  }
+  concat::fragment { "phpvirtualbox_config_${name}_servers+ZZZZ":
+    content => '//',
+  }
 
   # Footer
-  concat::fragment { "phpvirtualbox_config_${name}_footer":
-    order   => 99,
-    target  => $config_file,
+  concat_fragment { "phpvirtualbox_config_${name}+99":
     content => template('phpvirtualbox/config.php-footer.erb'),
   }
 
