@@ -184,7 +184,7 @@ define phpvirtualbox::instance
     owner   => $_www_owner,
     group   => $_www_group,
     require => [
-      Concat[$config_file],
+      File[$config_file],
       Archive[$download_file_basename],
     ],
   }
