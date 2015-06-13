@@ -9,8 +9,6 @@ define phpvirtualbox::host
   $auth_master = false,
 )
 {
-  $config_servers_block_fragment_file = "/tmp/concat_fragment_phpvirtualbox_config_${instance_name}_servers"
-
   # phpVirtualBox servers configuration array single server fragment.
   concat_fragment { "phpvirtualbox_config_${instance_name}_servers+${host_name}":
     content => $ensure ? {
