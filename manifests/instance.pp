@@ -210,7 +210,7 @@ define phpvirtualbox::instance
   }
 
   # Token content to prevent "no entries for this group" bug
-  concat::fragment { "phpvirtualbox_config_${name}_servers+ZZZZ":
+  concat_fragment { "phpvirtualbox_config_${name}_servers+ZZZZ":
     content => '//',
   }
 
