@@ -34,7 +34,7 @@ define phpvirtualbox::instance
 
   # End settings
   ##
-
+  
   if $httpd {
     # Install and configure Apache
     if !defined(Class['::apache']) {
@@ -46,6 +46,8 @@ define phpvirtualbox::instance
     }
 
     # If Apache is to be managed, set default user correctly if undefined
+    notify { $www_owner: }
+    notify { $www_group: }
     if !$www_owner {
       $_www_owner = $::apache::params::user
     } else {
@@ -56,6 +58,9 @@ define phpvirtualbox::instance
     } else {
       $_www_group = $www_group
     }
+  } else {
+    $_www_owner = $www_owner
+    $_www_group = $www_group
   }
 
   exec { "phpvirtualbox_${name}_create_base_path":
