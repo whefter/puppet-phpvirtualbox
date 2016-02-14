@@ -46,8 +46,6 @@ define phpvirtualbox::instance
     }
 
     # If Apache is to be managed, set default user correctly if undefined
-    notify { $www_owner: }
-    notify { $www_group: }
     if !$www_owner {
       $_www_owner = $::apache::params::user
     } else {
