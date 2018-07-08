@@ -1,3 +1,5 @@
+**This module is not maintained anymore since I've found Ansible to be much, much easier to use than Puppet.**
+
 # puppet-phpvirtualbox
 
 This is a simple module to allow the automated deployment of phpVirtualBox instances.
